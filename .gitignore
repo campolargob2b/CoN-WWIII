@@ -54,4 +54,3 @@ firebase-debug.log
 firebase-debug.*.log
 .firebaserc
 firebase.json
-functions/
