@@ -6,10 +6,5 @@
   directory = "netlify/functions" # Onde suas funções estão localizadas
   node_bundler = "esbuild" # Usar esbuild para empacotar as funções (mais rápido e eficiente)
 
-  # Comando para instalar as dependências da função antes do deploy da função
-  # Isso será executado dentro do diretório especificado em 'directory' (netlify/functions)
-  # Netlify automaticamente detecta package.json e executa npm install
-  # Se você tiver um comando de build específico para suas funções, coloque-o aqui.
-  # Caso contrário, o Netlify tentará instalar as dependências automaticamente.
-  # Se precisar de um comando explícito, descomente a linha abaixo e ajuste:
-  # build_command = "npm install"
+[[plugins]]
+package = "@netlify/plugin-functions-install-core"
