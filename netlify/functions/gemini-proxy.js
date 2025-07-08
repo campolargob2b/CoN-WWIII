@@ -1,5 +1,5 @@
 // netlify/functions/gemini-proxy.js
-import fetch from 'node-fetch';
+import axios from 'axios';
 
 // Handler para a função Netlify
 exports.handler = async function(event, context) {
@@ -66,20 +66,17 @@ exports.handler = async function(event, context) {
             ]
         };
 
-        // Faz a chamada para a API do Gemini
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // Faz a chamada para a API do Gemini usando axios
+        const response = await axios.post(
+            `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+            payload, // Axios envia o payload diretamente como objeto JSON
+            {
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Erro da API Gemini: ${response.status} - ${JSON.stringify(errorData)}`);
-        }
-
-        const geminiResponse = await response.json();
-
+        const geminiResponse = response.data; // Axios retorna os dados na propriedade .data
+        
         // Retorna a resposta do Gemini para o frontend
         return {
             statusCode: 200,
