@@ -1,5 +1,5 @@
 // netlify/functions/gemini-proxy.js
-const fetch = require('node-fetch'); // Necessário para fazer requisições HTTP
+import fetch from 'node-fetch';
 
 // Handler para a função Netlify
 exports.handler = async function(event, context) {
