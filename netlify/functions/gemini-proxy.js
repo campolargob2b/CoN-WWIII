@@ -1,5 +1,5 @@
 // netlify/functions/gemini-proxy.js
-import axios from 'axios';
+const axios = require('axios');
 
 // Handler para a função Netlify
 exports.handler = async function(event, context) {
