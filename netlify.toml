@@ -1,13 +1,9 @@
 [build]
-  publish = "public" # Onde seus arquivos estáticos (index.html, css, js) estão
-  command = "echo 'No build command needed for static site'" # Comando de build para o site principal (se houver)
+  publish = "public"
+  command = "echo 'No build command needed for static site'"
 
 [functions]
-  directory = "netlify/functions" # Onde suas funções estão localizadas
-  # node_bundler = "esbuild" # REMOVIDO AQUI
+  directory = "netlify/functions"
 
-[[plugins]]
-package = "@netlify/plugin-functions-install-core"
-
-[build.environment] # Adiciona uma seção de ambiente para o build
-NODE_VERSION = "18" # Define a versão do Node.js para o ambiente de build e funções
+[build.environment]
+NODE_VERSION = "18"

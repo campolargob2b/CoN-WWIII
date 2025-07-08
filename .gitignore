@@ -54,3 +54,8 @@ firebase-debug.log
 firebase-debug.*.log
 .firebaserc
 firebase.json
+
+# Netlify Functions specific
+netlify/functions/node_modules/
+netlify/functions/package-lock.json
+netlify/functions/package.json
