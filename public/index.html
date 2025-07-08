@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Inteligência de Unidades Consolidado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0A2463; 
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 450px;
+        }
+        .table-header-sortable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .table-header-sortable:hover {
+            background-color: #3E8989;
+        }
+        .table-header-sortable::after {
+            content: ' \2195';
+            opacity: 0.5;
+        }
+        .table-header-sortable.asc::after {
+            content: ' \2191';
+            opacity: 1;
+        }
+        .table-header-sortable.desc::after {
+            content: ' \2193';
+            opacity: 1;
+        }
+        .card {
+            background-color: #1A3470;
+            border: 1px solid #3E8989;
+        }
+        input[type="text"], select, textarea {
+            background-color: #0A2463;
+            border-color: #3E8989;
+            color: #E5E7EB;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 246, 246, 0.1);
+            border-left-color: #00F6F6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#00F6F6] mb-2">Painel de Inteligência de Unidades</h1>
+            <p class="text-lg text-gray-300">Análise Tática, Econômica e de Terreno para Conflict of Nations: World War 3</p>
+        </header>
+
+        <main class="space-y-12">
+            
+            <section id="kpis" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="card rounded-lg shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-[#3E8989] uppercase">Total de Unidades</h3>
+                    <p id="totalUnits" class="text-5xl font-bold text-white"></p>
+                    <p class="text-sm text-gray-400">Unidades analisadas</p>
+                </div>
+                <div class="card rounded-lg shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-[#3E8989] uppercase">Maior HP</h3>
+                    <p id="maxHpUnit" class="text-3xl font-bold text-white"></p>
+                    <p class="text-sm text-gray-400">Unidade mais resistente</p>
+                </div>
+                <div class="card rounded-lg shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-[#3E8989] uppercase">Melhor Anti-Blindado</h3>
+                    <p id="maxArmorAttackUnit" class="text-3xl font-bold text-white"></p>
+                    <p class="text-sm text-gray-400">Maior dano a blindados</p>
+                </div>
+                <div class="card rounded-lg shadow-lg p-6 text-center">
+                    <h3 class="text-lg font-semibold text-[#3E8989] uppercase">Mais Eficiente</h3>
+                    <p id="maxEfficiencyUnit" class="text-3xl font-bold text-white"></p>
+                    <p class="text-sm text-gray-400">Melhor custo-benefício</p>
+                </div>
+            </section>
+
+            <section id="database" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">Banco de Dados Tático e Econômico</h2>
+                <p class="mb-4 text-gray-300">A tabela a seguir foi expandida com dados econômicos e de terreno. Ordene e filtre para encontrar a combinação perfeita de poder e economia para sua estratégia.</p>
+                <div class="mb-4">
+                    <input type="text" id="searchInput" class="w-full p-2 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00F6F6]" placeholder="Filtrar por nome da unidade...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-[#00F6F6] uppercase bg-[#0A2463]">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="name">Unidade</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="class">Classe</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="hp">HP</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_inf">Atq Inf</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_armor">Atq Blind.</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_air">Atq Aéreo</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_heli">Atq Heli.</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_ship">Atq Navios</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_sub">Atq Sub.</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="attack_missile">Atq Mísseis</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="speed">Velocidade</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable" data-sort="range">Alcance</th>
+                                <th scope="col" class="px-4 py-3 table-header-sortable desc" data-sort="efficiency_index">Índice Eficiência</th>
+                                <th scope="col" class="px-4 py-3">Recursos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unitTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="terrain-analysis" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">✨ Análise Comparativa de Terreno</h2>
+                <p class="mb-6 text-gray-300">O terreno é um fator decisivo. Selecione uma unidade para visualizar seus bônus e penalidades de combate em diferentes ambientes. As porcentagens são estimativas estratégicas baseadas em relatórios de inteligência qualitativos.</p>
+                <div class="mb-4">
+                    <label for="terrainUnitSelect" class="block text-gray-300 text-sm font-bold mb-2">Selecione a Unidade para Análise:</label>
+                    <select id="terrainUnitSelect" class="w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00F6F6]"></select>
+                </div>
+                <div class="chart-container mx-auto">
+                    <canvas id="terrainChart"></canvas>
+                </div>
+            </section>
+
+            <section id="analise-economica" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">Análise de Custo-Benefício e Mobilização</h2>
+                <p class="mb-6 text-gray-300">Este gráfico classifica as unidades pelo "Índice de Eficiência", revelando quais oferecem o maior poder de combate pelo menor custo. Use-o para priorizar sua produção e mobilizar forças de forma rápida e sustentável.</p>
+                <div class="w-full">
+                    <h3 class="text-xl font-semibold text-center text-gray-200 mb-2">Top Unidades por Eficiência de Produção</h3>
+                    <div class="chart-container mx-auto">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="gemini-scenario" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">✨ Analisador de Cenários de Batalha (IA Gemini)</h2>
+                <p class="mb-6 text-gray-300">Descreva um cenário de combate e deixe a IA do Gemini API gerar um plano estratégico detalhado para você. Inclua suas unidades, unidades inimigas, tipo de terreno e objetivos.</p>
+                <div class="mb-4">
+                    <label for="scenarioInput" class="block text-gray-300 text-sm font-bold mb-2">Descreva o Cenário:</label>
+                    <textarea id="scenarioInput" class="w-full p-2 rounded-md h-32 resize-y focus:outline-none focus:ring-2 focus:ring-[#00F6F6]" placeholder="Ex: Estou atacando uma cidade com 5x Infantaria Motorizada e 2x Tanques de Batalha Principal. O inimigo tem 3x Fuzileiros Navais e 1x Destruidor de Tanques defendendo. Qual a melhor tática?"></textarea>
+                </div>
+                <button id="analyzeScenarioBtn" class="bg-[#F21B3F] text-white font-bold py-2 px-4 rounded-md shadow-md hover:bg-[#F21B3F]/80 transition-colors duration-200 flex items-center justify-center gap-2">
+                    Analisar Cenário ✨
+                </button>
+                <div id="loadingScenarioSpinner" class="hidden mt-4 flex justify-center items-center">
+                    <div class="spinner"></div>
+                    <span class="ml-2 text-gray-400">Gerando plano de batalha...</span>
+                </div>
+                <div id="scenarioOutput" class="mt-6 p-4 bg-gray-800 rounded-md shadow-inner text-gray-100 min-h-[100px] flex items-center justify-center text-center">
+                    <p class="text-gray-400">Seu plano de batalha aparecerá aqui.</p>
+                </div>
+            </section>
+
+            <section id="gemini-compare" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">✨ Comparador de Unidades (IA Gemini)</h2>
+                <p class="mb-6 text-gray-300">Compare duas unidades em detalhes para entender suas vantagens, desvantagens e papéis ideais no campo de batalha, tudo com a análise inteligente do Gemini API.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="unitASelect" class="block text-gray-300 text-sm font-bold mb-2">Unidade A:</label>
+                        <select id="unitASelect" class="w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00F6F6]"></select>
+                    </div>
+                    <div>
+                        <label for="unitBSelect" class="block text-gray-300 text-sm font-bold mb-2">Unidade B:</label>
+                        <select id="unitBSelect" class="w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00F6F6]"></select>
+                    </div>
+                </div>
+                <button id="compareUnitsBtn" class="bg-[#F5E663] text-[#0A2463] font-bold py-2 px-4 rounded-md shadow-md hover:bg-[#F5E663]/80 transition-colors duration-200 flex items-center justify-center gap-2">
+                    Comparar Unidades ✨
+                </button>
+                <div id="loadingCompareSpinner" class="hidden mt-4 flex justify-center items-center">
+                    <div class="spinner"></div>
+                    <span class="ml-2 text-gray-400">Analisando comparação...</span>
+                </div>
+                <div id="unitComparisonOutput" class="mt-6 p-4 bg-gray-800 rounded-md shadow-inner text-gray-100 min-h-[100px] flex items-center justify-center text-center">
+                    <p class="text-gray-400">A comparação das unidades aparecerá aqui.</p>
+                </div>
+            </section>
+            
+            <section id="gemini-strategist" class="card rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-[#00F6F6] mb-4 border-b-2 border-[#3E8989] pb-2">✨ Estrategista de Contra-Ataque (IA Gemini)</h2>
+                <p class="mb-6 text-gray-300">Selecione uma unidade inimiga e o Estrategista Gemini irá sugerir contra-ataques que equilibram eficácia em combate e viabilidade econômica.</p>
+                <div class="mb-4">
+                    <label for="enemyUnitSelect" class="block text-gray-300 text-sm font-bold mb-2">Selecione a Unidade Inimiga:</label>
+                    <select id="enemyUnitSelect" class="w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00F6F6]"></select>
+                </div>
+                <button id="generateStrategyBtn" class="bg-[#00F6F6] text-[#0A2463] font-bold py-2 px-4 rounded-md shadow-md hover:bg-[#00F6F6]/80 transition-colors duration-200 flex items-center justify-center gap-2">
+                    Gerar Estratégia de Contra-Ataque ✨
+                </button>
+                <div id="loadingSpinner" class="hidden mt-4 flex justify-center items-center">
+                    <div class="spinner"></div>
+                    <span class="ml-2 text-gray-400">Analisando dados...</span>
+                </div>
+                <div id="counterStrategyOutput" class="mt-6 p-4 bg-gray-800 rounded-md shadow-inner text-gray-100 min-h-[100px] flex items-center justify-center text-center">
+                    <p class="text-gray-400">Sua estratégia de contra-ataque aparecerá aqui.</p>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="text-center mt-12 py-6 border-t border-t-[#3E8989]">
+            <p class="text-gray-400">Painel de Inteligência v5.0. Criado por pex058. Dados extraídos e inferidos da wiki do CoN. Apenas para fins de análise estratégica.<br>Se gostou do conteúdo e quer ajudar o criador, envie um pix para: f516115a-984a-4c74-9c94-dbd4b34c9e29</p>
+        </footer>
+    </div>
+
+    <script>
+    const costMap = {
+        'Muito Baixo': 0.5, 'Baixo': 1, 'Médio': 2, 'Alto': 4, 'Muito Alto': 8
+    };
+
+    let unitData = [
+        { name: 'Infantaria Motorizada', class: 'Infantaria', hp: 20, attack_inf: 2.5, attack_armor: 1, attack_air: 0, attack_heli: 1.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 0, research_cost: 'Baixo', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Sup', 'Comp', 'MDO'], terrain: { urban: 25, forest: 25, mountain: 10, open: 0, difficult: -10, shallow_water: 0 } },
+        { name: 'Guarda Nacional', class: 'Infantaria', hp: 15, attack_inf: 1.5, attack_armor: 0.5, attack_air: 0, attack_heli: 0.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 0, research_cost: 'Muito Baixo', production_cost: 'Muito Baixo', production_time: 'Muito Baixo', resources: ['Sup', 'MDO'], terrain: { urban: 25, forest: 25, mountain: 10, open: 0, difficult: -10, shallow_water: 0 } },
+        { name: 'Fuzileiros Navais', class: 'Infantaria', hp: 25, attack_inf: 3.5, attack_armor: 1.5, attack_air: 0, attack_heli: 1.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Sup', 'Comp', 'MDO', 'Ele'], terrain: { urban: 40, forest: 10, mountain: -25, open: 0, difficult: -25, shallow_water: 0 } },
+        { name: 'Forças Especiais', class: 'Infantaria', hp: 20, attack_inf: 4.5, attack_armor: 2.5, attack_air: 0, attack_heli: 3, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 3, range: 0, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.83, terrain: { urban: 15, forest: 15, mountain: 15, open: 15, difficult: 15, shallow_water: 0 } },
+        { name: 'Infantaria Mecanizada', class: 'Infantaria', hp: 30, attack_inf: 4.0, attack_armor: 2.0, attack_air: 0, attack_heli: 2.0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Sup', 'Comp', 'MDO', 'Ele'], efficiency_index: 2.86, terrain: { urban: 10, forest: -10, mountain: -15, open: 15, difficult: -10, shallow_water: 0 } },
+        { name: 'Infantaria Aerotransportada', class: 'Infantaria', hp: 20, attack_inf: 3.0, attack_armor: 1.0, attack_air: 0, attack_heli: 1.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.0, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Sup', 'MDO', 'Ele'], efficiency_index: 2.38, terrain: { urban: 20, forest: 20, mountain: -20, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Mercenários', class: 'Infantaria', hp: 20, attack_inf: 3.0, attack_armor: 1.0, attack_air: 0, attack_heli: 1.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 0, research_cost: 'Médio', production_cost: 'Alto', production_time: 'Baixo', resources: ['Sup', 'MDO', 'Din'], efficiency_index: 2.14, terrain: { urban: 10, forest: 10, mountain: 10, open: 10, difficult: 10, shallow_water: 0 } },
+        { name: 'Forças Especiais de Elite', class: 'Infantaria', hp: 25, attack_inf: 6.0, attack_armor: 3.0, attack_air: 2.5, attack_heli: 4.0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 3.5, range: 0, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.50, terrain: { urban: 20, forest: 20, mountain: 20, open: 20, difficult: 20, shallow_water: 0 } },
+        { name: 'Veículo de Combate Blindado', class: 'Blindado', hp: 25, attack_inf: 4.5, attack_armor: 2.5, attack_air: 0, attack_heli: 1, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 4, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.71, terrain: { urban: -30, forest: -30, mountain: -20, open: 10, difficult: -30, shallow_water: 0 } },
+        { name: 'Tanque de Batalha Principal', class: 'Blindado', hp: 35, attack_inf: 6, attack_armor: 6, attack_air: 0, attack_heli: 1, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 3.5, range: 0, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 1.83, terrain: { urban: -50, forest: -40, mountain: -50, open: 15, difficult: -50, shallow_water: 0 } },
+        { name: 'Destruidor de Tanques', class: 'Blindado', hp: 28, attack_inf: 4, attack_armor: 8.5, attack_air: 0, attack_heli: 0.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 3, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.88, terrain: { urban: 40, forest: -25, mountain: -35, open: 10, difficult: -35, shallow_water: 0 } },
+        { name: 'Veículo de Reconhecimento', class: 'Blindado', hp: 20, attack_inf: 2.0, attack_armor: 0.5, attack_air: 0, attack_heli: 0.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 5.0, range: 0, research_cost: 'Baixo', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 3.00, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Veículo Anfíbio de Combate', class: 'Blindado', hp: 30, attack_inf: 4.5, attack_armor: 2.5, attack_air: 0, attack_heli: 1.0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 3.5, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.86, terrain: { urban: -30, forest: -30, mountain: -20, open: 10, difficult: -30, water: 0 } },
+        { name: 'Artilharia Autopropulsada', class: 'Suporte', hp: 15, attack_inf: 6, attack_armor: 6, attack_air: 0, attack_heli: 0, attack_ship: 0.5, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 75, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Sup', 'MDO', 'Ele'], efficiency_index: 2.71, terrain: { urban: -10, forest: -10, mountain: 5, open: 0, difficult: -10, shallow_water: 0 } },
+        { name: 'Lançador Múltiplo de Foguetes', class: 'Suporte', hp: 15, attack_inf: 8.5, attack_armor: 7.5, attack_air: 0, attack_heli: 0, attack_ship: 1, attack_sub: 0, attack_missile: 0, speed: 2, range: 100, research_cost: 'Alto', production_cost: 'Muito Alto', production_time: 'Alto', resources: ['Sup', 'Comp', 'MDO', 'Ele'], efficiency_index: 1.50, terrain: { urban: -10, forest: -10, mountain: 5, open: 0, difficult: -10, shallow_water: 0 } },
+        { name: 'Míssil SAM', class: 'Suporte', hp: 15, attack_inf: 0, attack_armor: 0, attack_air: 7.5, attack_heli: 10, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 1.5, range: 50, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Sup', 'MDO', 'Ele'], efficiency_index: 1.83, terrain: { urban: 0, forest: 0, mountain: 10, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Artilharia Rebocada', class: 'Suporte', hp: 12, attack_inf: 4.0, attack_armor: 0.5, attack_air: 0, attack_heli: 0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 1.5, range: 75, research_cost: 'Baixo', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Sup', 'MDO'], efficiency_index: 2.57, terrain: { urban: -10, forest: -10, mountain: 5, open: 0, difficult: -10, shallow_water: 0 } },
+        { name: 'Defesa Aérea Móvel', class: 'Suporte', hp: 20, attack_inf: 1.0, attack_armor: 0, attack_air: 4.0, attack_heli: 6.0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 35, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Sup', 'MDO', 'Ele'], efficiency_index: 2.38, terrain: { urban: 0, forest: -25, mountain: 0, open: 0, difficult: -25, shallow_water: 0 } },
+        { name: 'Sistema de Defesa de Teatro', class: 'Suporte', hp: 18, attack_inf: 0, attack_armor: 0, attack_air: 8.0, attack_heli: 6.0, attack_ship: 0, attack_sub: 0, attack_missile: 10.0, speed: 1.5, range: 100, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Sup', 'MDO', 'Ele', 'MR'], efficiency_index: 1.13, terrain: { urban: 0, forest: 0, mountain: 10, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Radar Móvel', class: 'Suporte', hp: 10, attack_inf: 0, attack_armor: 0, attack_air: 0, attack_heli: 0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 50, research_cost: 'Médio', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Sup', 'MDO', 'Ele'], efficiency_index: 1.67, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Helicóptero de Ataque', class: 'Helicóptero', hp: 20, attack_inf: 4.5, attack_armor: 6, attack_air: 0, attack_heli: 0, attack_ship: 0.5, attack_sub: 0, attack_missile: 0, speed: 5.5, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.71, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Patrulha Naval (Helicóptero)', class: 'Helicóptero', hp: 18, attack_inf: 0, attack_armor: 0, attack_air: 0, attack_heli: 0, attack_ship: 4.5, attack_sub: 6.0, attack_missile: 0, speed: 5.5, range: 0, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.38, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 10 } },
+        { name: 'Caça de Sup. Aérea', class: 'Aéreo', hp: 25, attack_inf: 0, attack_armor: 0, attack_air: 7.5, attack_heli: 5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 10, range: 0, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.83, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Caça de Ataque', class: 'Aéreo', hp: 28, attack_inf: 3, attack_armor: 4, attack_air: 4, attack_heli: 4, attack_ship: 2, attack_sub: 0, attack_missile: 0, speed: 8, range: 0, research_cost: 'Médio', production_cost: 'Alto', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.71, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Bombardeiro Estratégico', class: 'Aéreo', hp: 20, attack_inf: 7.5, attack_armor: 7.5, attack_air: 0, attack_heli: 0, attack_ship: 5, attack_sub: 0, attack_missile: 0, speed: 6, range: 0, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.25, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Bombardeiro Pesado', class: 'Aéreo', hp: 22, attack_inf: 9.0, attack_armor: 9.0, attack_air: 0, attack_heli: 0, attack_ship: 7.0, attack_sub: 0, attack_missile: 0, speed: 5.5, range: 0, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.38, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Caça de Sup. Aérea Furtivo', class: 'Aéreo', hp: 25, attack_inf: 0, attack_armor: 0, attack_air: 8.0, attack_heli: 5.5, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 10, range: 0, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.50, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Caça de Ataque Furtivo', class: 'Aéreo', hp: 30, attack_inf: 4.0, attack_armor: 5.0, attack_air: 5.0, attack_heli: 5.0, attack_ship: 3.0, attack_sub: 0, attack_missile: 0, speed: 8, range: 0, research_cost: 'Alto', production_cost: 'Muito Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 2.00, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'UAV', class: 'Aéreo', hp: 10, attack_inf: 0.5, attack_armor: 0.5, attack_air: 0, attack_heli: 0, attack_ship: 0, attack_sub: 0, attack_missile: 0, speed: 7.0, range: 0, research_cost: 'Baixo', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.00, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Corveta', class: 'Naval', hp: 25, attack_inf: 0.5, attack_armor: 0.5, attack_air: 1, attack_heli: 1.5, attack_ship: 3, attack_sub: 0, attack_missile: 0, speed: 2.5, range: 40, research_cost: 'Baixo', production_cost: 'Baixo', production_time: 'Baixo', resources: ['Sup', 'Comp', 'MDO', 'Ele'], efficiency_index: 2.71, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 15 } },
+        { name: 'Fragata', class: 'Naval', hp: 35, attack_inf: 0, attack_armor: 0, attack_air: 2, attack_heli: 3, attack_ship: 2.5, attack_sub: 0, attack_missile: 0, speed: 2, range: 40, research_cost: 'Médio', production_cost: 'Médio', production_time: 'Médio', resources: ['Comp', 'MDO', 'Ele'], efficiency_index: 2.38, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Cruzador', class: 'Naval', hp: 55, attack_inf: 2, attack_armor: 2, attack_air: 6, attack_heli: 5, attack_ship: 8, attack_sub: 0, attack_missile: 0, speed: 1.5, range: 75, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.50, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Destróier', class: 'Naval', hp: 40, attack_inf: 1.5, attack_armor: 1.5, attack_air: 4.5, attack_heli: 4.0, attack_ship: 6.0, attack_sub: 5.0, attack_missile: 0, speed: 2.0, range: 50, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 2.00, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Porta-Aviões', class: 'Naval', hp: 70, attack_inf: 0.5, attack_armor: 0.5, attack_air: 1.0, attack_heli: 1.0, attack_ship: 1.0, attack_sub: 1.0, attack_missile: 1.0, speed: 1.0, range: 0, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.25, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: 0 } },
+        { name: 'Submarino de Ataque', class: 'Submarino', hp: 30, attack_inf: 0, attack_armor: 0, attack_air: 0, attack_heli: 0, attack_ship: 7.0, attack_sub: 8.0, attack_missile: 0, speed: 3.0, range: 0, research_cost: 'Alto', production_cost: 'Alto', production_time: 'Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.83, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: -50 } },
+        { name: 'Submarino de Mísseis Balísticos', class: 'Submarino', hp: 40, attack_inf: 0, attack_armor: 0, attack_air: 0, attack_heli: 0, attack_ship: 1.0, attack_sub: 1.0, attack_missile: 12.0, speed: 2.0, range: 150, research_cost: 'Muito Alto', production_cost: 'Muito Alto', production_time: 'Muito Alto', resources: ['Comp', 'MDO', 'Ele', 'MR'], efficiency_index: 1.25, terrain: { urban: 0, forest: 0, mountain: 0, open: 0, difficult: 0, shallow_water: -25 } },
+    ];
+
+    unitData = unitData.map(unit => {
+        const totalAttack = (unit.attack_inf || 0) + (unit.attack_armor || 0) + (unit.attack_air || 0) + (unit.attack_heli || 0) + (unit.attack_ship || 0) + (unit.attack_sub || 0) + (unit.attack_missile || 0);
+        const avgAttack = totalAttack / 7;
+        const combatPower = (unit.hp / 5) + avgAttack;
+        
+        const researchCostVal = costMap[unit.research_cost] || 1;
+        const productionCostVal = costMap[unit.production_cost] || 1;
+        const productionTimeVal = costMap[unit.production_time] || 1;
+        const totalCost = researchCostVal + productionCostVal + productionTimeVal;
+        const efficiencyIndex = totalCost > 0 ? (combatPower * 10) / totalCost : 0;
+        return { ...unit, avg_attack: avgAttack, efficiency_index: efficiencyIndex };
+    });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        let currentSort = { column: 'efficiency_index', direction: 'desc' };
+        const tableBody = document.getElementById('unitTableBody');
+        const searchInput = document.getElementById('searchInput');
+
+        function sortData(data, column, direction) {
+            return [...data].sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+                if (typeof aVal === 'string') {
+                    return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                }
+                return direction === 'asc' ? aVal - bVal : bVal - aVal;
+            });
+        }
+
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+            data.forEach(unit => {
+                const resourceBubbles = unit.resources.map(r => `<span class="inline-block bg-gray-700 text-xs font-semibold mr-1 px-2 py-0.5 rounded-full">${r}</span>`).join('');
+                const row = `
+                    <tr class="border-b border-gray-700 hover:bg-[#3E8989]/20">
+                        <td class="px-4 py-2 font-medium text-white whitespace-nowrap">${unit.name}</td>
+                        <td class="px-4 py-2">${unit.class}</td>
+                        <td class="px-4 py-2">${unit.hp}</td>
+                        <td class="px-4 py-2">${unit.attack_inf || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_armor || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_air || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_heli || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_ship || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_sub || 0}</td>
+                        <td class="px-4 py-2">${unit.attack_missile || 0}</td>
+                        <td class="px-4 py-2">${unit.speed}</td>
+                        <td class="px-4 py-2">${unit.range}</td>
+                        <td class="px-4 py-2 font-bold text-[#00F6F6]">${unit.efficiency_index.toFixed(2)}</td>
+                        <td class="px-4 py-2">${resourceBubbles}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+        
+        function updateSortUI() {
+            document.querySelectorAll('.table-header-sortable').forEach(h => {
+                h.classList.remove('asc', 'desc');
+                if(h.dataset.sort === currentSort.column) h.classList.add(currentSort.direction);
+            });
+        }
+
+        document.querySelectorAll('.table-header-sortable').forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.dataset.sort;
+                const direction = (currentSort.column === column && currentSort.direction === 'asc') ? 'desc' : 'asc';
+                currentSort = { column, direction };
+                updateSortUI();
+                const filteredData = unitData.filter(unit => unit.name.toLowerCase().includes(searchInput.value.toLowerCase()));
+                renderTable(sortData(filteredData, column, direction));
+            });
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredData = unitData.filter(unit => unit.name.toLowerCase().includes(searchTerm));
+            renderTable(sortData(filteredData, currentSort.column, currentSort.direction));
+        });
+        
+        updateSortUI();
+        renderTable(sortData(unitData, currentSort.column, currentSort.direction));
+
+        const chartColors = {
+            blue: '#00F6F6', darkBlue: '#0A2463', teal: '#3E8989', yellow: '#F5E663',
+            red: '#F21B3F', lightGray: 'rgba(209, 213, 219, 0.7)', gridColor: 'rgba(62, 137, 137, 0.3)'
+        };
+        const chartTooltipOptions = {
+            plugins: {
+                legend: { labels: { color: chartColors.lightGray } },
+                tooltip: {
+                    callbacks: {
+                        title: (tooltipItems) => {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            return Array.isArray(label) ? label.join(' ') : label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: chartColors.lightGray }, grid: { color: chartColors.gridColor } },
+                y: { ticks: { color: chartColors.lightGray }, grid: { color: chartColors.gridColor } }
+            }
+        };
+        
+        function wrapLabel(label, maxWidth = 16) {
+            if (label.length <= maxWidth) return label;
+            const words = label.split(' ');
+            let lines = [], currentLine = '';
+            for (const word of words) {
+                if ((currentLine + word).length > maxWidth) {
+                    lines.push(currentLine.trim());
+                    currentLine = '';
+                }
+                currentLine += word + ' ';
+            }
+            lines.push(currentLine.trim());
+            return lines.filter(line => line.length > 0);
+        }
+
+        const topEfficiencyUnits = sortData(unitData, 'efficiency_index', 'desc').slice(0, 10);
+        new Chart(document.getElementById('efficiencyChart'), {
+            type: 'bar',
+            data: {
+                labels: topEfficiencyUnits.map(u => wrapLabel(u.name)),
+                datasets: [{
+                    label: 'Índice de Eficiência',
+                    data: topEfficiencyUnits.map(u => u.efficiency_index),
+                    backgroundColor: chartColors.blue,
+                    borderColor: chartColors.yellow,
+                    borderWidth: 1
+                }]
+            },
+            options: { ...chartTooltipOptions, indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+        });
+
+        const terrainUnitSelect = document.getElementById('terrainUnitSelect');
+        const terrainChartCtx = document.getElementById('terrainChart').getContext('2d');
+        let terrainChart;
+
+        function createOrUpdateTerrainChart(unit) {
+            const terrainData = unit.terrain || {};
+            const data = {
+                labels: ['Urbano', 'Florestas', 'Montanhas', 'Planícies', 'Terreno Difícil', 'Águas Rasas'],
+                datasets: [{
+                    label: `${unit.name} - Bônus/Penalidade de Terreno (%)`,
+                    data: [
+                        terrainData.urban || 0,
+                        terrainData.forest || 0,
+                        terrainData.mountain || 0,
+                        terrainData.open || 0,
+                        terrainData.difficult || 0,
+                        terrainData.shallow_water || 0
+                    ],
+                    backgroundColor: 'rgba(0, 246, 246, 0.2)',
+                    borderColor: 'rgba(0, 246, 246, 1)',
+                    pointBackgroundColor: 'rgba(0, 246, 246, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(0, 246, 246, 1)'
+                }]
+            };
+
+            if (terrainChart) {
+                terrainChart.data = data;
+                terrainChart.update();
+            } else {
+                terrainChart = new Chart(terrainChartCtx, {
+                    type: 'radar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: chartColors.lightGray, font: {size: 14} } }
+                        },
+                        scales: {
+                           r: {
+                                angleLines: { color: chartColors.gridColor },
+                                grid: { color: chartColors.gridColor },
+                                pointLabels: { color: chartColors.lightGray, font: {size: 12} },
+                                ticks: {
+                                    color: 'white',
+                                    backdropColor: 'rgba(0,0,0,0.5)',
+                                    stepSize: 25
+                                }
+                           }
+                        }
+                    }
+                });
+            }
+        }
+        
+        sortData(unitData, 'name', 'asc').forEach(unit => {
+            const option = document.createElement('option');
+            option.value = unit.name;
+            option.textContent = unit.name;
+            terrainUnitSelect.appendChild(option.cloneNode(true));
+        });
+        
+        terrainUnitSelect.addEventListener('change', (e) => {
+            const selectedUnit = unitData.find(u => u.name === e.target.value);
+            if(selectedUnit) createOrUpdateTerrainChart(selectedUnit);
+        });
+        
+        if (unitData.length > 0) {
+            createOrUpdateTerrainChart(unitData.find(u => u.name === terrainUnitSelect.value));
+        }
+
+
+        const enemyUnitSelect = document.getElementById('enemyUnitSelect');
+        const unitASelect = document.getElementById('unitASelect');
+        const unitBSelect = document.getElementById('unitBSelect');
+
+        sortData(unitData, 'name', 'asc').forEach(unit => {
+            const option = document.createElement('option');
+            option.value = unit.name;
+            option.textContent = unit.name;
+            enemyUnitSelect.appendChild(option.cloneNode(true));
+            unitASelect.appendChild(option.cloneNode(true));
+            unitBSelect.appendChild(option.cloneNode(true));
+        });
+
+        if (unitData.length > 1) {
+            unitASelect.value = unitData[0].name;
+            unitBSelect.value = unitData[1].name;
+        }
+
+        const generateStrategyBtn = document.getElementById('generateStrategyBtn');
+        const counterStrategyOutput = document.getElementById('counterStrategyOutput');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        generateStrategyBtn.addEventListener('click', async () => {
+            const selectedUnitName = enemyUnitSelect.value;
+            if (!selectedUnitName) {
+                counterStrategyOutput.innerHTML = '<p class="text-red-400">Por favor, selecione uma unidade inimiga.</p>';
+                counterStrategyOutput.classList.add('text-center');
+                return;
+            }
+            loadingSpinner.classList.remove('hidden');
+            counterStrategyOutput.innerHTML = '';
+            counterStrategyOutput.classList.remove('text-center');
+            generateStrategyBtn.disabled = true;
+
+            const enemyUnit = unitData.find(u => u.name === selectedUnitName);
+            let prompt = `Você é um estrategista militar experiente em "Conflict of Nations". Analise a unidade inimiga e sugira as 3 melhores unidades para contra-atacá-la, equilibrando poder de combate e custo-benefício.
+
+Unidade Inimiga: ${JSON.stringify(enemyUnit)}
+
+Unidades Disponíveis: ${JSON.stringify(unitData)}
+
+Explique a vantagem tática e econômica de cada contra-ataque. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
+
+            try {
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    counterStrategyOutput.innerHTML = `<div class="bg-gray-800 p-4 rounded-md shadow-inner text-left text-gray-100 whitespace-pre-wrap">${result.candidates[0].content.parts[0].text}</div>`;
+                } else {
+                     counterStrategyOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a estratégia.</p>';
+                     counterStrategyOutput.classList.add('text-center');
+                }
+            } catch (error) {
+                counterStrategyOutput.innerHTML = `<p class="text-red-400">Erro ao conectar com a IA Gemini: ${error.message}</p>`;
+                counterStrategyOutput.classList.add('text-center');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+                generateStrategyBtn.disabled = false;
+            }
+        });
+
+        const compareUnitsBtn = document.getElementById('compareUnitsBtn');
+        const unitComparisonOutput = document.getElementById('unitComparisonOutput');
+        const loadingCompareSpinner = document.getElementById('loadingCompareSpinner');
+
+        compareUnitsBtn.addEventListener('click', async () => {
+            const unitAName = unitASelect.value;
+            const unitBName = unitBSelect.value;
+            if (!unitAName || !unitBName) {
+                unitComparisonOutput.innerHTML = '<p class="text-red-400">Por favor, selecione duas unidades para comparar.</p>';
+                unitComparisonOutput.classList.add('text-center');
+                return;
+            }
+            if (unitAName === unitBName) {
+                unitComparisonOutput.innerHTML = '<p class="text-yellow-400">Selecione unidades diferentes para uma comparação significativa.</p>';
+                unitComparisonOutput.classList.add('text-center');
+                return;
+            }
+            
+            loadingCompareSpinner.classList.remove('hidden');
+            unitComparisonOutput.innerHTML = '';
+            unitComparisonOutput.classList.remove('text-center');
+            compareUnitsBtn.disabled = true;
+
+            const unitA = unitData.find(u => u.name === unitAName);
+            const unitB = unitData.find(u => u.name === unitBName);
+            let prompt = `Você é um analista militar altamente qualificado para o jogo "Conflict of Nations". Sua tarefa é comparar duas unidades específicas, fornecendo uma análise detalhada de seus pontos fortes, pontos fracos e cenários de uso ideais. Considere todos os atributos fornecidos, incluindo poder de combate, economia e mobilidade.
+
+Unidade A: ${JSON.stringify(unitA)}
+
+Unidade B: ${JSON.stringify(unitB)}
+
+Com base nesses dados, forneça uma análise comparativa focada nos seguintes pontos:
+1.  **Pontos Fortes de A vs. B:** Onde a Unidade A se destaca em relação à Unidade B, e vice-versa?
+2.  **Pontos Fracos de A vs. B:** Onde a Unidade A é vulnerável em comparação com a Unidade B, e vice-versa?
+3.  **Cenários de Uso Ideal:** Em que tipo de situação de combate cada unidade brilharia mais?
+4.  **Recursos e Produção:** Como os custos e tempos de produção influenciam a viabilidade e o uso estratégico de cada unidade?
+5.  **Conclusão e Veredito:** Em um confronto direto (se aplicável, considerando suas classes e tipos de ataque), qual unidade teria vantagem e por quê?
+
+Seja objetivo, claro e utilize uma linguagem militar estratégica. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
+
+            try {
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    unitComparisonOutput.innerHTML = `<div class="bg-gray-800 p-4 rounded-md shadow-inner text-left text-gray-100 whitespace-pre-wrap">${result.candidates[0].content.parts[0].text}</div>`;
+                } else {
+                     unitComparisonOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a comparação.</p>';
+                     unitComparisonOutput.classList.add('text-center');
+                }
+            } catch (error) {
+                unitComparisonOutput.innerHTML = `<p class="text-red-400">Erro ao conectar com a IA Gemini: ${error.message}</p>`;
+                unitComparisonOutput.classList.add('text-center');
+            } finally {
+                loadingCompareSpinner.classList.add('hidden');
+                compareUnitsBtn.disabled = false;
+            }
+        });
+
+        const scenarioInput = document.getElementById('scenarioInput');
+        const analyzeScenarioBtn = document.getElementById('analyzeScenarioBtn');
+        const scenarioOutput = document.getElementById('scenarioOutput');
+        const loadingScenarioSpinner = document.getElementById('loadingScenarioSpinner');
+
+        analyzeScenarioBtn.addEventListener('click', async () => {
+            const scenarioDescription = scenarioInput.value.trim();
+            if (!scenarioDescription) {
+                scenarioOutput.innerHTML = '<p class="text-red-400">Por favor, descreva um cenário de batalha para analisar.</p>';
+                scenarioOutput.classList.add('text-center');
+                return;
+            }
+
+            loadingScenarioSpinner.classList.remove('hidden');
+            scenarioOutput.innerHTML = '';
+            scenarioOutput.classList.remove('text-center');
+            analyzeScenarioBtn.disabled = true;
+
+            let prompt = `Você é um estrategista militar de alto nível no jogo "Conflict of Nations: World War 3". Sua missão é analisar o seguinte cenário de batalha e fornecer um plano estratégico detalhado. Considere as unidades envolvidas, seus atributos (HP, ataques contra diferentes tipos, velocidade, alcance, bônus/penalidades de terreno, custos e tempos de produção), e o objetivo geral.
+
+Dados de todas as unidades disponíveis para referência: ${JSON.stringify(unitData)}
+
+Cenário a ser analisado: "${scenarioDescription}"
+
+Com base no cenário e nos dados das unidades, forneça:
+1.  **Análise da Situação:** Breve avaliação das forças e fraquezas de cada lado no cenário.
+2.  **Plano de Ação Recomendado:** Quais unidades devem ser usadas, como devem ser posicionadas e quais táticas devem ser empregadas (ex: flanco, ataque frontal, defesa, uso de terreno).
+3.  **Unidades Chave:** Destaque unidades específicas que seriam cruciais para o sucesso e por quê.
+4.  **Considerações Econômicas/Logísticas:** Se a produção de novas unidades for relevante, mencione quais seriam eficientes para o cenário.
+5.  **Resultado Esperado:** Uma previsão realista do desfecho com base na estratégia proposta.
+
+Seja conciso, prático e utilize uma linguagem militar estratégica. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
+
+            try {
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(payload)
+                 });
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    scenarioOutput.innerHTML = `<div class="bg-gray-800 p-4 rounded-md shadow-inner text-left text-gray-100 whitespace-pre-wrap">${result.candidates[0].content.parts[0].text}</div>`;
+                } else {
+                    scenarioOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar o plano de batalha. A resposta da IA está vazia ou incompleta.</p>';
+                    scenarioOutput.classList.add('text-center');
+                }
+            } catch (error) {
+                scenarioOutput.innerHTML = `<p class="text-red-400">Ocorreu um erro ao conectar com o Analisador de Cenários (IA Gemini): ${error.message}</p>`;
+                scenarioOutput.classList.add('text-center');
+            } finally {
+                loadingScenarioSpinner.classList.add('hidden');
+                analyzeScenarioBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('totalUnits').textContent = unitData.length;
+        const maxHp = unitData.reduce((prev, current) => (prev.hp > current.hp) ? prev : current);
+        document.getElementById('maxHpUnit').textContent = maxHp.name;
+        const maxArmor = unitData.reduce((prev, current) => (prev.attack_armor > current.attack_armor) ? prev : current);
+        document.getElementById('maxArmorAttackUnit').textContent = maxArmor.name;
+        const maxEfficiency = unitData.reduce((prev, current) => (prev.efficiency_index > current.efficiency_index) ? prev : current);
+        document.getElementById('maxEfficiencyUnit').textContent = maxEfficiency.name;
+    });
+    </script>
+</body>
+</html>
