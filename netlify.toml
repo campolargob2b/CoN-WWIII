@@ -4,7 +4,10 @@
 
 [functions]
   directory = "netlify/functions" # Onde suas funções estão localizadas
-  node_bundler = "esbuild" # Usar esbuild para empacotar as funções (mais rápido e eficiente)
+  # node_bundler = "esbuild" # REMOVIDO AQUI
 
 [[plugins]]
 package = "@netlify/plugin-functions-install-core"
+
+[build.environment] # Adiciona uma seção de ambiente para o build
+NODE_VERSION = "18" # Define a versão do Node.js para o ambiente de build e funções
