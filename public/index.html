@@ -520,16 +520,20 @@ Unidades Disponíveis: ${JSON.stringify(unitData)}
 Explique a vantagem tática e econômica de cada contra-ataque. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
 
             try {
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                // ALTERAÇÃO AQUI: Chamando a Netlify Function
+                const apiUrl = `https://gilded-chebakia-973fd5.netlify.app/.netlify/functions/gemini-proxy`; // SUBSTITUA PELO SEU DOMÍNIO NETLIFY
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt }) // Enviando apenas o prompt no corpo
+                });
                 const result = await response.json();
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     counterStrategyOutput.innerHTML = `<div class="bg-gray-800 p-4 rounded-md shadow-inner text-left text-gray-100 whitespace-pre-wrap">${result.candidates[0].content.parts[0].text}</div>`;
                 } else {
-                     counterStrategyOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a estratégia.</p>';
+                     counterStrategyOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a estratégia. A resposta da IA está vazia ou incompleta.</p>';
                      counterStrategyOutput.classList.add('text-center');
                 }
             } catch (error) {
@@ -582,21 +586,22 @@ Com base nesses dados, forneça uma análise comparativa focada nos seguintes po
 Seja objetivo, claro e utilize uma linguagem militar estratégica. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
 
             try {
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                // ALTERAÇÃO AQUI: Chamando a Netlify Function
+                const apiUrl = `https://gilded-chebakia-973fd5.netlify.app/.netlify/functions/gemini-proxy`; // SUBSTITUA PELO SEU DOMÍNIO NETLIFY
+
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: prompt }) });
                 const result = await response.json();
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     unitComparisonOutput.innerHTML = `<div class="bg-gray-800 p-4 rounded-md shadow-inner text-left text-gray-100 whitespace-pre-wrap">${result.candidates[0].content.parts[0].text}</div>`;
                 } else {
-                     unitComparisonOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a comparação.</p>';
+                     unitComparisonOutput.innerHTML = '<p class="text-red-400">Não foi possível gerar a comparação. A resposta da IA está vazia ou incompleta.</p>';
                      unitComparisonOutput.classList.add('text-center');
                 }
             } catch (error) {
-                unitComparisonOutput.innerHTML = `<p class="text-red-400">Erro ao conectar com a IA Gemini: ${error.message}</p>`;
+                unitComparisonOutput.innerHTML = `<p class="text-red-400">Ocorreu um erro ao conectar com o comparador (IA Gemini): ${error.message}</p>`;
                 unitComparisonOutput.classList.add('text-center');
+                console.error('Fetch error:', error);
             } finally {
                 loadingCompareSpinner.classList.add('hidden');
                 compareUnitsBtn.disabled = false;
@@ -637,13 +642,13 @@ Com base no cenário e nos dados das unidades, forneça:
 Seja conciso, prático e utilize uma linguagem militar estratégica. Formate a resposta usando marcadores ou listas para facilitar a leitura.`;
 
             try {
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                // ALTERAÇÃO AQUI: Chamando a Netlify Function
+                const apiUrl = `https://gilded-chebakia-973fd5.netlify.app/.netlify/functions/gemini-proxy`; // SUBSTITUA PELO SEU DOMÍNIO NETLIFY
+
                 const response = await fetch(apiUrl, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify(payload)
+                     body: JSON.stringify({ prompt: prompt }) // Enviando apenas o prompt no corpo
                  });
                 const result = await response.json();
 
